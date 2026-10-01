@@ -1,7 +1,7 @@
-data/splits
 data/raw/en-annotated.tsv
 data/raw/ro-projections.tsv
 data/raw/pairs-ro.txt
+data/splits
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
