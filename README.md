@@ -16,14 +16,13 @@ In the root directory, create a file called  ```.env``` and add this to it (This
 ```
 HF_TOKEN="your hugginface token"
 ```
-To load the models do:
+To train the primary model do do:
 ```
-uv run src/cross_lingual_llm/models_loader.py
+uv run src/cross_lingual_llm/model_trainer.py --condition language
 ```
-This should download the weights of the 2 models, and run a tokenizer on the primary one. It will show
-a msg if it fully loaded.
+Instead of language, type either "english", "romanian" or "bilingual" (without quotation marks).
+This will download the weights of Qwen and run PEFT training on it using the specified language. For the paper you need to run this command three times with all language options. I made it like this so my PC has time to empty its RAM before it starts another batch. It takes around 24GB of RAM and 7GB of VRAM to train one model. It will show a message where the weights are saved but I will try to push them to Git myself.
 
-<span style="color:red">If it crashes because you reach a RAM limit, just comment out the "model" line.</span><br>
 <span style="color:red">To use the gemma model, you have to request access from google but it takes like 2 minutes.</span><br>
 Zero shot prompting should work for both models, both in English and Romanian but its not randomised so it outputs the same thing
 every time.

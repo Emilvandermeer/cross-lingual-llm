@@ -58,3 +58,28 @@ def read_tsv_lines(path):
                 yield text, labels.strip()
             else:
                 yield line, None
+
+def format_instruction(row, tokenizer, language="en"):
+    
+    emotions = ["anger", "anticipation", "disgust", "fear", "joy", "sadness", "surprise", "trust"]
+    labels = [emotion for emotion in emotions if row[f"{language}_{emotion}"] == 1]
+    LLM_instruction = (
+        "Classify the following text into one or more of these emotions: "
+        "anger, anticipation, disgust, fear, joy, sadness, surprise, trust. "
+        "Output a JSON list containing only the permmited English label names. ")
+    target_output = str(labels).replace("'", '"')
+
+    if "gemma" in tokenizer.name_or_path.lower():
+        msg_dict = [
+            {"role": "user", "content": f"{LLM_instruction}\n\nText: {row[f'{language}_text']}"},
+            {"role": "assistant", "content": target_output}
+        ]
+    else:
+        msg_dict = [
+        {"role": "system", "content": LLM_instruction},
+        {"role": "user", "content": row[f"{language}_text"]},
+        {"role": "assistant", "content": target_output}
+        ]
+
+    prompt = tokenizer.apply_chat_template(msg_dict, tokenize=False)
+    return {"text": prompt}

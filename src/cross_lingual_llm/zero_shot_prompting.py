@@ -1,8 +1,8 @@
 import pandas as pd
 from datasets import Dataset
 from transformers import AutoTokenizer
-from data.data_utils import OUT_DIR
-from models_loader import PRIMARY_MODEL_ID, SECONDARY_MODEL_ID
+from preprocessing.data_utils import OUT_DIR
+from model_trainer import PRIMARY_MODEL_ID, SECONDARY_MODEL_ID
 
 primary_tokenizer = AutoTokenizer.from_pretrained(PRIMARY_MODEL_ID)
 secondary_tokenizer = AutoTokenizer.from_pretrained(SECONDARY_MODEL_ID)
