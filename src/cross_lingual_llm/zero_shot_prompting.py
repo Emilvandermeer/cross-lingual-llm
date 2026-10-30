@@ -1,8 +1,12 @@
 import pandas as pd
 from datasets import Dataset
 from transformers import AutoTokenizer
-from preprocessing.data_utils import OUT_DIR
-from model_trainer import PRIMARY_MODEL_ID, SECONDARY_MODEL_ID
+from preprocessing.data_utils import (
+    OUT_DIR,
+    PRIMARY_MODEL_ID,
+    SECONDARY_MODEL_ID,
+    LLM_instruction
+    )
 
 primary_tokenizer = AutoTokenizer.from_pretrained(PRIMARY_MODEL_ID)
 secondary_tokenizer = AutoTokenizer.from_pretrained(SECONDARY_MODEL_ID)
@@ -12,10 +16,6 @@ def format_instruction(row, tokenizer=primary_tokenizer, language="en"):
     
     emotions = ["anger", "anticipation", "disgust", "fear", "joy", "sadness", "surprise", "trust"]
     labels = [emotion for emotion in emotions if row[f"{language}_{emotion}"] == 1]
-    LLM_instruction = (
-        "Classify the following text into one or more of these emotions: "
-        "anger, anticipation, disgust, fear, joy, sadness, surprise, trust. "
-        "Output a JSON list containing only the permmited English label names. ")
     target_output = str(labels).replace("'", '"')
 
     if "gemma" in tokenizer.name_or_path.lower():

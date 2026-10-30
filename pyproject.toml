@@ -15,6 +15,7 @@ dependencies = [
     "numpy==1.26.0",
     "pandas>=2.3.3",
     "peft>=0.21.2",
+    "scikit-learn>=1.9.1",
     "torch>=2.14.1",
     "transformers>=5.19.0",
     "trl>=1.17.0",

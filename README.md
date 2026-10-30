@@ -16,12 +16,18 @@ In the root directory, create a file called  ```.env``` and add this to it (This
 ```
 HF_TOKEN="your hugginface token"
 ```
-To train the primary model do do:
+To train the primary model do:
 ```
 uv run src/cross_lingual_llm/model_trainer.py --condition language
 ```
 Instead of language, type either "english", "romanian" or "bilingual" (without quotation marks).
 This will download the weights of Qwen and run PEFT training on it using the specified language. For the paper you need to run this command three times with all language options. I made it like this so my PC has time to empty its RAM before it starts another batch. It takes around 24GB of RAM and 7GB of VRAM to train one model. It will show a message where the weights are saved but I will try to push them to Git myself.
+
+To evaluate the primary model do:
+```
+uv run src/cross_lingual_llm/inference.py --dataset dataset --language language --model model
+```
+Instead of dataset, type either "dev" or "test" (dev should only be used for hyperparameter tuning). Instead of language, type either "english" or "romanian", this is needed because the bilingual model is evaluated on both datasets. Instead of model type "en", "ro" or "bilingual". The last part currently doesn't do anything because there is just one model but after I train the other two I will add the logic for it to work to the code. It takes like 5 minutes to evaluate a model and it uses up 15GB of RAM (because it loads the entire model to RAM).
 
 <span style="color:red">To use the gemma model, you have to request access from google but it takes like 2 minutes.</span><br>
 Zero shot prompting should work for both models, both in English and Romanian but its not randomised so it outputs the same thing

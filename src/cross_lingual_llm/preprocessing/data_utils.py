@@ -11,6 +11,8 @@ RAW_DIR = ROOT / "data" / "raw"        # en-annotated.tsv, ro-projections.tsv, p
 OUT_DIR = ROOT / "data" / "splits"     # train.csv, dev.csv, test.csv, summary.csv
 LANG = "ro"                            # assigned language (English is always included)
 SEED = 69
+PRIMARY_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct" # the primary model in use
+SECONDARY_MODEL_ID = "google/gemma-2-2b-it" # the secondary model in use
 
 # Fixed label order. XED ids 1..8 map to these in this exact order.
 LABELS = ["anger", "anticipation", "disgust", "fear",
@@ -18,6 +20,10 @@ LABELS = ["anger", "anticipation", "disgust", "fear",
 EN_COLS = [f"en_{l}" for l in LABELS]      # English label columns
 RO_COLS = [f"ro_{l}" for l in LABELS]    # target-language label columns - romanian
 
+LLM_instruction = (
+    "Classify the following text into one or more of these emotions: "
+    "anger, anticipation, disgust, fear, joy, sadness, surprise, trust. "
+    "Output a JSON list containing only the permmited English label names. ")
 
 def labels_to_vector(label_str):
     """'1, 4, 7' -> array([1,0,0,1,0,0,1,0])  (neutral 0 is ignored)."""

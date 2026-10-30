@@ -10,18 +10,20 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    TrainingArguments
 )
 from trl import SFTTrainer, SFTConfig
 
-from preprocessing.data_utils import OUT_DIR, ROOT, SEED, format_instruction
+from preprocessing.data_utils import (
+    OUT_DIR,
+    ROOT,
+    SEED,
+    PRIMARY_MODEL_ID,
+    format_instruction
+)
 
 load_dotenv()
 train_df = pd.read_csv(OUT_DIR / "train.csv")
 login(token=os.getenv("HF_TOKEN"))
-
-PRIMARY_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-SECONDARY_MODEL_ID = "google/gemma-2-2b-it"
 
 hyperparams = {
     "adapter_targets":["q_proj", "v_proj"],
@@ -100,7 +102,7 @@ def main()->None:
     parser.add_argument(
         "--condition", 
         type=str,
-        choices=["english", "romanian", "bilingual"], 
+        choices=["english", "romanian", "bilingual"],
         required=True,
         help="Select the training condition to execute."
     )
