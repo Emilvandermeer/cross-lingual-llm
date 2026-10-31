@@ -9,7 +9,7 @@ These should be dragged and dropped into data/raw.<br>
 
 To process and split data run:
 ``` 
-uv run src/cross_lingual_llm/data/data_splitter.py
+uv run src/cross_lingual_llm/preprocessing/data_splitter.py
 ```
 
 In the root directory, create a file called  ```.env``` and add this to it (This is needed so you can load the models):
