@@ -1,60 +1,129 @@
 import pandas as pd
-from datasets import Dataset
-from transformers import AutoTokenizer
+import argparse
+import numpy as np
+from tqdm import tqdm
+import torch
+from transformers import (
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    AutoModelForCausalLM,
+    set_seed,
+    )
+from sklearn.metrics import f1_score, jaccard_score, precision_score, recall_score, hamming_loss
 from preprocessing.data_utils import (
     OUT_DIR,
+    LABELS,
     PRIMARY_MODEL_ID,
     SECONDARY_MODEL_ID,
-    LLM_instruction
+    LLM_instruction,
+    parse_prediction,
+    text_labels_to_vector,
+    SEED
     )
 
-primary_tokenizer = AutoTokenizer.from_pretrained(PRIMARY_MODEL_ID)
-secondary_tokenizer = AutoTokenizer.from_pretrained(SECONDARY_MODEL_ID)
-train_df = pd.read_csv(OUT_DIR / "train.csv")
+df = pd.read_csv(OUT_DIR / "test.csv")
+set_seed(SEED)
 
-def format_instruction(row, tokenizer=primary_tokenizer, language="en"):
-    
-    emotions = ["anger", "anticipation", "disgust", "fear", "joy", "sadness", "surprise", "trust"]
-    labels = [emotion for emotion in emotions if row[f"{language}_{emotion}"] == 1]
-    target_output = str(labels).replace("'", '"')
+def format_instruction(row, tokenizer, language="en"):
 
     if "gemma" in tokenizer.name_or_path.lower():
         msg_dict = [
-            {"role": "user", "content": f"{LLM_instruction}\n\nText: {row[f'{language}_text']}"},
-            {"role": "assistant", "content": target_output}
+            {"role": "user", "content": f"{LLM_instruction}\n\nText: {row[f'{language}_text']}"}
         ]
     else:
         msg_dict = [
-        {"role": "system", "content": LLM_instruction},
-        {"role": "user", "content": row[f"{language}_text"]},
-        {"role": "assistant", "content": target_output}
+            {"role": "system", "content": LLM_instruction},
+            {"role": "user", "content": row[f"{language}_text"]}
         ]
 
-    prompt = tokenizer.apply_chat_template(msg_dict, tokenize=False)
-    return {"text": prompt}
+    return msg_dict
 
-def run_test(model: str):
-    if model.lower() == "qwen":
-        tokenizer = primary_tokenizer
-        msg = "QWEN (PRIMARY)"
-    elif model.lower() == "gemma":
-        tokenizer = secondary_tokenizer
-        msg = "GEMMA (SECONDARY)"
-    else:
-        raise ValueError("The project uses only Qwen and Gemma")
-    train_dataset = Dataset.from_pandas(train_df)
-    en_train_dataset = train_dataset.map(lambda row: format_instruction(row, tokenizer))
-    ro_train_dataset = train_dataset.map(lambda row: format_instruction(row, tokenizer,"ro"))
-
-    print("\n--- ENGLISH FORMATTED EXAMPLE ON " + msg + " ---")
-    print(en_train_dataset[0]["text"])
+def test_model(model_id: str, language: str)->None:
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     
-    print("\n--- ROMANIAN FORMATTED EXAMPLE ON " + msg + " ---")
-    print(ro_train_dataset[0]["text"])
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype="float16"
+    )
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        quantization_config=bnb_config,
+        device_map="auto"
+        )
+
+    predictions = []
+    model.eval()
+    
+    for _, row in tqdm(df.iterrows(), total=len(df)):
+        msg_dict = format_instruction(row, tokenizer, language)
+        prompt = tokenizer.apply_chat_template(msg_dict, tokenize=False, add_generation_prompt = True)
+        inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=50,
+                pad_token_id=tokenizer.eos_token_id,
+                do_sample=False, # Added so metrics stay the same
+                temperature=None, # Added so metrics stay the same
+                top_p=None # Added so metrics stay the same
+            )
+        input_length = inputs["input_ids"].shape[1]
+        generated_tokens = outputs[0][input_length:]
+        raw_output = tokenizer.decode(generated_tokens, skip_special_tokens=True)
+        clean_labels, _ = parse_prediction(raw_output)
+        predictions.append(clean_labels)
+
+    y_pred = []
+    for prediction in predictions:
+        vec_pred = text_labels_to_vector(prediction, LABELS)
+        y_pred.append(vec_pred)
+
+    y_pred = np.array(y_pred, dtype=int)
+    columns = [f"{language}_{emo}" for emo in LABELS]
+    y_true = df[columns].to_numpy(dtype=int)
+
+    f1_micro = f1_score(y_true, y_pred, average='micro')
+    jac = jaccard_score(y_true, y_pred, average='samples')
+    f1_macro = f1_score(y_true, y_pred, average='macro')
+    ham = hamming_loss(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, average='micro', zero_division=0)
+    recall = recall_score(y_true, y_pred, average='micro')
+
+    print("------------------RESULTS------------------\n")
+    print("Primary Evaluation Metrics:")
+    print(f"micro-averaged F1: {f1_micro:.3f}")
+    print(f"sample-averaged Jaccard index: {jac:.3f}\n")
+
+    print("Secondary Evaluation Metrics:")
+    print(f"macro-averaged F1: {f1_macro:.3f}")
+    print(f"Hamming loss: {ham:.3f}")
+    print(f"Precision: {precision:.3f}")
+    print(f"Recall: {recall:.3f}")
+
+
 
 def main() -> None:
-    run_test("Qwen")
-    run_test("gemma")
+    parser = argparse.ArgumentParser(description="Run Zero-Shot Evaluation")
+    parser.add_argument(
+        "--model",
+        type=str,
+        choices=["qwen", "gemma"],
+        required=True
+    )
+    parser.add_argument(
+        "--language",
+        type=str,
+        choices=["english", "romanian"],
+        required=True
+    )
+    args = parser.parse_args()
+    model_id = PRIMARY_MODEL_ID if args.model == "qwen" else SECONDARY_MODEL_ID
+    test_model(model_id, args.language[:2])
+
 
 if __name__ == "__main__":
     main()

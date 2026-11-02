@@ -1,8 +1,9 @@
-"""Small helpers shared by the data loader and the splitter."""
+"""Helper file containg shared functions and constants."""
 import re
 from pathlib import Path
 
 import numpy as np
+import json
 
 # Fixed run configuration (paths are relative to this file, so it runs from anywhere)
 ROOT = Path(__file__).resolve().parent
@@ -89,3 +90,26 @@ def format_instruction(row, tokenizer, language="en"):
 
     prompt = tokenizer.apply_chat_template(msg_dict, tokenize=False)
     return {"text": prompt}
+
+def parse_prediction(raw_output):
+
+    clean_text = raw_output.strip().lower()
+    match = re.search(r'\[.*?\]', clean_text, re.DOTALL)
+    if match:
+        clean_text = match.group(0)
+    try:
+        parsed_list = json.loads(clean_text)
+        if not isinstance(parsed_list, list): #check for malformed labels
+            return [], True
+        valid_labels = list(set(label.strip() for label in parsed_list if label.strip() in LABELS))
+        return valid_labels, False
+    except json.JSONDecodeError:
+        return [], True
+
+def text_labels_to_vector(predicted_labels, valid_labels):
+    y = np.zeros(len(valid_labels), dtype=int)
+    for emotion in predicted_labels:
+        if emotion in valid_labels:
+            idx = valid_labels.index(emotion)
+            y[idx] = 1
+    return y

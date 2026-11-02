@@ -64,7 +64,7 @@ def PEFT_training(language: str):
         save_strategy=hyperparams["checkp_rule"],
         seed=hyperparams["seed"],
         dataset_text_field="text",
-        max_length=hyperparams["max_seq_length"]
+        max_length=hyperparams["max_seq_length"],
     )
 
     primary_tokenizer = AutoTokenizer.from_pretrained(PRIMARY_MODEL_ID)
@@ -95,7 +95,9 @@ def PEFT_training(language: str):
 
     print(f"Starting {language} PEFT training...")
     supervised_tr.train()
-    print(f"Training complete.\nWeights saved at {str(ROOT / "data" / "results")}")
+    final_path = str(ROOT / "data" / "results" / language / "final_model")
+    supervised_tr.save_model(final_path)
+    print(f"Training complete.\nFinal model saved at {final_path}")
 
 def main()->None:
     parser = argparse.ArgumentParser(description="Run PEFT training for cross-lingual emotion classification.")

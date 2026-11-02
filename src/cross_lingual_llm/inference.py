@@ -1,8 +1,12 @@
 import argparse
 import pandas as pd
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
-import json
+from transformers import (
+    AutoModelForCausalLM,
+    BitsAndBytesConfig,
+    AutoTokenizer,
+    set_seed
+)
 from tqdm import tqdm
 import torch
 import numpy as np
@@ -12,27 +16,14 @@ from preprocessing.data_utils import (
     OUT_DIR,
     ROOT,
     LABELS,
-    LLM_instruction
+    LLM_instruction,
+    parse_prediction,
+    text_labels_to_vector,
+    SEED
 )
 
+set_seed(SEED)
 tokenizer = AutoTokenizer.from_pretrained(PRIMARY_MODEL_ID)
-
-def text_labels_to_vector(predicted_labels, valid_labels):
-    y = np.zeros(len(valid_labels), dtype=int)
-    for emotion in predicted_labels:
-        if emotion in valid_labels:
-            idx = valid_labels.index(emotion)
-            y[idx] = 1
-    return y
-
-def parse_prediction(raw_output):
-
-    clean_text = raw_output.strip().lower()
-    parsed_list = json.loads(clean_text)
-    if not isinstance(parsed_list, list): #check for malformed labels
-        return [], True
-    valid_labels = list(set(label.strip() for label in parsed_list if label.strip() in LABELS))
-    return valid_labels, False
 
 def test_model(language: str, model_type: str, df)->None:
     bnb_config = BitsAndBytesConfig(
@@ -46,8 +37,8 @@ def test_model(language: str, model_type: str, df)->None:
         quantization_config=bnb_config,
         device_map="auto"
         )
-    #! change the model type based on the three trained types
-    model = PeftModel.from_pretrained(qwen, str(ROOT / "data" / "results" / "checkpoint-3531"))
+    adapter_path = str(ROOT / "data" / "results" / model_type / "final_model")
+    model = PeftModel.from_pretrained(qwen, adapter_path)
     predictions = []
     model.eval()
     for _, row in tqdm(df.iterrows(), total=len(df)):
@@ -61,7 +52,10 @@ def test_model(language: str, model_type: str, df)->None:
             outputs = model.generate(
                 **inputs,
                 max_new_tokens=50,
-                pad_token_id=tokenizer.eos_token_id
+                pad_token_id=tokenizer.eos_token_id,
+                do_sample=False, # Added so metrics stay the same
+                temperature=None, # Added so metrics stay the same
+                top_p=None # Added so metrics stay the same
             )
         input_length = inputs["input_ids"].shape[1]
         generated_tokens = outputs[0][input_length:]
