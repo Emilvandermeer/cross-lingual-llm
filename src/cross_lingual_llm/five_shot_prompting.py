@@ -9,7 +9,15 @@ from transformers import (
     AutoModelForCausalLM,
     set_seed,
     )
-from sklearn.metrics import f1_score, jaccard_score, precision_score, recall_score, hamming_loss
+from sklearn.metrics import (
+    f1_score,
+    jaccard_score,
+    precision_score,
+    recall_score,
+    hamming_loss,
+    accuracy_score,
+    classification_report
+    )
 from preprocessing.data_utils import (
     OUT_DIR,
     LABELS,
@@ -77,6 +85,7 @@ def test_model(model_id: str, language: str)->None:
         )
 
     predictions = []
+    malformed_count = 0
     model.eval()
     
     for _, row in tqdm(test_df.iterrows(), total=len(test_df)):
@@ -96,7 +105,9 @@ def test_model(model_id: str, language: str)->None:
         input_length = inputs["input_ids"].shape[1]
         generated_tokens = outputs[0][input_length:]
         raw_output = tokenizer.decode(generated_tokens, skip_special_tokens=True)
-        clean_labels, _ = parse_prediction(raw_output)
+        clean_labels, is_malformed = parse_prediction(raw_output)
+        if is_malformed:
+            malformed_count += 1
         predictions.append(clean_labels)
 
     y_pred = []
@@ -107,6 +118,16 @@ def test_model(model_id: str, language: str)->None:
     y_pred = np.array(y_pred, dtype=int)
     columns = [f"{language}_{emo}" for emo in LABELS]
     y_true = test_df[columns].to_numpy(dtype=int)
+
+    exact_match = accuracy_score(y_true, y_pred)
+    malformed_rate = malformed_count / len(test_df)
+
+    per_emotion_report = classification_report(
+        y_true, 
+        y_pred, 
+        target_names=LABELS, 
+        zero_division=0
+    )
 
     f1_micro = f1_score(y_true, y_pred, average='micro')
     jac = jaccard_score(y_true, y_pred, average='samples')
@@ -125,6 +146,12 @@ def test_model(model_id: str, language: str)->None:
     print(f"Hamming loss: {ham:.3f}")
     print(f"Precision: {precision:.3f}")
     print(f"Recall: {recall:.3f}")
+
+    print("\n------------------DIAGNOSTICS------------------\n")
+    print(f"Malformed-output rate: {malformed_rate:.3f} ({malformed_count}/{len(test_df)} samples)")
+    print(f"Exact-match ratio: {exact_match:.3f}")
+    print("\nPer-Emotion Breakdown:")
+    print(per_emotion_report)
 
 
 
