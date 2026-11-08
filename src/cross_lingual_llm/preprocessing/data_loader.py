@@ -1,11 +1,8 @@
-"""Load the raw XED files and build matched English <-> target-language examples.
+"""Load the raw XED files and build matched English <-> Romanian examples.
 
 Result is a pandas DataFrame with one row per alignment
 (en_file | ro_file | en_sentence_id | ro_sentence_id) and columns:
     id, en_text, ro_text, en_anger ... en_trust, ro_anger ... ro_trust
-
-Raw files needed in data/raw:
-    en-annotated.tsv, ro-projections.tsv, pairs-ro.txt
 """
 import re
 from collections import defaultdict
@@ -13,7 +10,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-from data_utils import (EN_COLS, LABELS, LANG, OUT_DIR, RAW_DIR, RO_COLS,
+from data_utils import (EN_COLS, LABELS, OUT_DIR, RAW_DIR, RO_COLS,
                         labels_to_vector, read_tsv_lines, text_key, unquote,
                         vector_to_names)
 
@@ -28,7 +25,7 @@ def load_english(path):
 
 
 def load_projected(path):
-    """<lang>-projections.tsv -> {text: label_str}.
+    """ro-projections.tsv -> {text: label_str}.
     Drops corrupted lines (alignment rows swallowed by a stray quote, 'nan')."""
     out = {}
     for text, labels in read_tsv_lines(path):
@@ -41,7 +38,7 @@ def load_projected(path):
 
 
 def load_pairs(path):
-    """pairs-<lang>.txt -> DataFrame, English-source rows only."""
+    """pairs-ro.txt -> DataFrame, English-source rows only."""
     cols = ["en_file", "ro_file", "en_sid", "ro_sid", "en_text", "ro_text"]
     rows = []
     with open(path, encoding="utf-8", newline="") as f:
@@ -77,8 +74,8 @@ def english_labels_for(pairs, english):
 def build_examples():
     """Return a DataFrame of matched English <-> Romanian examples."""
     english = load_english(RAW_DIR / "en-annotated.tsv")
-    projected = load_projected(RAW_DIR / f"{LANG}-projections.tsv")
-    pairs = load_pairs(RAW_DIR / f"pairs-{LANG}.txt")
+    projected = load_projected(RAW_DIR / f"ro-projections.tsv")
+    pairs = load_pairs(RAW_DIR / f"pairs-ro.txt")
 
     pairs["en_labels"] = english_labels_for(pairs, english)
     pairs["ro_labels"] = pairs["ro_text"].map(projected)
@@ -98,7 +95,6 @@ def build_examples():
     return out
 
 
-# ---- helpers for reading saved splits in the experiments -----------------
 def load_split(split):
     """Read one saved split ('train' | 'dev' | 'test') -> DataFrame."""
     return pd.read_csv(OUT_DIR / f"{split}.csv", keep_default_na=False)

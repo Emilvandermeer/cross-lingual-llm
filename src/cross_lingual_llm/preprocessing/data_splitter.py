@@ -1,13 +1,4 @@
-"""Create the fixed 70/20/10 train/dev/test split and save it as CSV.
-
-  * Split unit: groups of examples that share an exact English or target line
-    (so parallel versions and exact duplicates never cross partitions).
-  * Stratification: multi-label iterative stratification (Sechidis et al., 2011)
-    on the English + target label vectors together.
-
-Usage (everything is hardcoded: data/raw -> data/splits, English + Romanian, seed 42):
-    uv run data_splitter.py
-"""
+"""Create the fixed 70/20/10 train/dev/test split and save it as CSV."""
 import numpy as np
 import pandas as pd
 

@@ -1,16 +1,16 @@
 # cross-lingual-llm
 
-For now for the data to work, you should download the following files from that github repo on brightspace
-```
-en-annotated.tsv , ro-projections.tsv , pairs-ro.txt
-```
-These should be dragged and dropped into data/raw.<br>
-<span style="color:red">need to do this in a better way, i believe that the pairs-ro will be too big to upload to github.</span>
 
 To process and split data run:
 ``` 
 uv run src/cross_lingual_llm/preprocessing/data_splitter.py
 ```
+This will produce 4 .csv files:
+
+```
+data/splits/dev.csv , data/splits/test.csv , data/splits/train.csv , data/splits/summary.csv
+```
+Information about each of the splits and their respective sizes + label distribution can be found in summary.csv
 
 In the root directory, create a file called  ```.env``` and add this to it (This is needed so you can load the models):
 ```

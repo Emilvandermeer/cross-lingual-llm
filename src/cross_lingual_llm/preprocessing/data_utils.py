@@ -10,7 +10,6 @@ ROOT = Path(__file__).resolve().parent
 ROOT = ROOT.parent.parent.parent
 RAW_DIR = ROOT / "data" / "raw"        # en-annotated.tsv, ro-projections.tsv, pairs-ro.txt
 OUT_DIR = ROOT / "data" / "splits"     # train.csv, dev.csv, test.csv, summary.csv
-LANG = "ro"                            # assigned language (English is always included)
 SEED = 69
 PRIMARY_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct" # the primary model in use
 SECONDARY_MODEL_ID = "google/gemma-2-2b-it" # the secondary model in use
